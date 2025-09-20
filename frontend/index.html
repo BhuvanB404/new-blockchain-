@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herb Abhilekh - Transparency from Root to Remedy</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <h2>Herb Abhilekh</h2>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="#home" class="nav-link">Home</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="traceability.html" class="nav-link">Traceability</a>
+                <a href="analytics.html" class="nav-link">Analytics</a>
+                <a href="#dashboard" class="nav-link">Dashboard</a>
+            </div>
+            <div class="nav-auth">
+                <button class="btn-login" onclick="showLoginModal()">Login</button>
+                <button class="btn-register" onclick="showRegisterModal()">Register</button>
+            </div>
+            <div class="hamburger" id="hamburger">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">Welcome to Herb Abhilekh</h1>
+                <p class="hero-subtitle">Scan a QR, trace the herb, trust the blockchain</p>
+                <button class="btn-primary" onclick="showQRScanner()">
+                    <i class="fas fa-qrcode"></i>
+                    Scan QR Code
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">Transparency from Root to Remedy</h2>
+            <p class="section-subtitle">Go beyond the label. Our blockchain technology creates an unchangeable, transparent record of each herb's journey. Simply scan a product's QR code to instantly access its complete history—from cultivation details and harvest dates to processing methods and quality tests.</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3>QR Code Scanning</h3>
+                    <p>Instant access to complete product provenance through QR code scanning</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Role-Based Access</h3>
+                    <p>Customized dashboards for farmers, manufacturers, laboratories, and regulators</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3>Data Capture Forms</h3>
+                    <p>Comprehensive forms for collection, processing, and quality test documentation</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Analytics & Reporting</h3>
+                    <p>Advanced analytics and reporting tools for stakeholders and administrators</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- QR Scanner Modal -->
+    <div id="qrScannerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>QR Code Scanner</h3>
+                <span class="close" onclick="closeQRScanner()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container">
+                    <video id="video" width="400" height="300"></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                </div>
+                <div class="scanner-info">
+                    <p>Position the QR code within the camera view to scan</p>
+                    <button class="btn-secondary" onclick="startScanning()">Start Scanning</button>
+                    <button class="btn-secondary" onclick="stopScanning()">Stop Scanning</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Login</h3>
+                <span class="close" onclick="closeLoginModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginUserId">User ID</label>
+                        <input type="text" id="loginUserId" name="userId" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Register</h3>
+                <span class="close" onclick="closeRegisterModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="registerRole">Role</label>
+                        <select id="registerRole" name="role" required>
+                            <option value="">Select Role</option>
+                            <option value="farmer">Farmer</option>
+                            <option value="manufacturer">Manufacturer</option>
+                            <option value="laboratory">Laboratory</option>
+                            <option value="regulator">Regulator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerUserId">User ID</label>
+                        <input type="text" id="registerUserId" name="userId" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerName">Name</label>
+                        <input type="text" id="registerName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="registerLocation">Location</label>
+                        <input type="text" id="registerLocation" name="location" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Register</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <section id="dashboard" class="dashboard">
+        <div class="container">
+            <h2 class="section-title">Dashboard</h2>
+            <div id="dashboardContent" class="dashboard-content">
+                <div class="login-prompt">
+                    <h3>Please login to access your dashboard</h3>
+                    <button class="btn-primary" onclick="showLoginModal()">Login</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Traceability Section -->
+    <section id="traceability" class="traceability">
+        <div class="container">
+            <h2 class="section-title">End-to-End Traceability</h2>
+            <div class="traceability-flow">
+                <div class="flow-step">
+                    <div class="step-icon">
+                        <i class="fas fa-seedling"></i>
+                    </div>
+                    <h3>Collection</h3>
+                    <p>Herbs are collected from verified farms with GPS coordinates and environmental data</p>
+                </div>
+                <div class="flow-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <div class="flow-step">
+                    <div class="step-icon">
+                        <i class="fas fa-flask"></i>
+                    </div>
+                    <h3>Quality Testing</h3>
+                    <p>Laboratory testing for purity, pesticides, and quality standards</p>
+                </div>
+                <div class="flow-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <div class="flow-step">
+                    <div class="step-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Processing</h3>
+                    <p>Manufacturing and processing with detailed condition tracking</p>
+                </div>
+                <div class="flow-arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <div class="flow-step">
+                    <div class="step-icon">
+                        <i class="fas fa-pills"></i>
+                    </div>
+                    <h3>Medicine</h3>
+                    <p>Final product with complete blockchain traceability</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Herb Abhilekh</h3>
+                    <p>Transparency from Root to Remedy</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <ul>
+                        <li><a href="#features">QR Code Scanning</a></li>
+                        <li><a href="#features">Role-Based Access</a></li>
+                        <li><a href="#features">Data Capture</a></li>
+                        <li><a href="#features">Analytics</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Traceability</h4>
+                    <ul>
+                        <li><a href="#traceability">Collection</a></li>
+                        <li><a href="#traceability">Quality Testing</a></li>
+                        <li><a href="#traceability">Processing</a></li>
+                        <li><a href="#traceability">Medicine</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Herb Abhilekh. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
