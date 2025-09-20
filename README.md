@@ -44,6 +44,11 @@ cd  fabric-samples/test-network
 
 # Verify deployment
 docker ps | grep ehrChainCode
+
+
+in new terminal run ./monitor.sh script present in test-network to see Blockchain running
+
+
 ```
 
 ### 5. Setup Application
