@@ -23,9 +23,9 @@ async function main() {
         const wallet = await Wallets.newFileSystemWallet(walletPath);
         console.log(`Wallet path: ${walletPath}`);
 
-        const userIdentity = await wallet.get('Farmer01');
+        const userIdentity = await wallet.get('Shankanil');
         if (userIdentity) {
-            console.log('An identity for the user "Farmer01" already exists in the wallet');
+            console.log('An identity for the user "Shankanil" already exists in the wallet');
             return;
         }
 
@@ -41,16 +41,16 @@ async function main() {
 
         const secret = await ca.register({
             affiliation: 'org1.department1',
-            enrollmentID: 'Farmer01',
+            enrollmentID: 'Shankanil',
             role: 'client',
             attrs: [
                 { name: 'role', value: 'farmer', ecert: true },
-                { name: 'uuid', value: 'Farmer01', ecert: true }
+                { name: 'uuid', value: 'Shankanil', ecert: true }
             ],
         }, adminUser);
         
         const enrollment = await ca.enroll({
-            enrollmentID: 'Farmer01',
+            enrollmentID: 'Shankanil',
             enrollmentSecret: secret,
             attr_reqs: [
                 { name: "role", optional: false },
@@ -66,10 +66,10 @@ async function main() {
             mspId: 'Org1MSP',
             type: 'X.509',
         };
-        await wallet.put('Farmer01', x509Identity);
-        console.log('Successfully registered and enrolled farmer user "Farmer01" and imported it into the wallet');
+        await wallet.put('Shankanil', x509Identity);
+        console.log('Successfully registered and enrolled farmer user "Shankanil" and imported it into the wallet');
     } catch (error) {
-        console.error(`Failed to register user "Farmer01": ${error}`);
+        console.error(`Failed to register user "Shankanil": ${error}`);
         process.exit(1);
     }
 }
