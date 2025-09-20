@@ -1,0 +1,552 @@
+# Ayurveda Supply Chain Blockchain Testing Commands
+
+## Prerequisites Setup
+
+### 1. Start Hyperledger Fabric Network
+```bash
+cd fabric-samples/test-network
+./network.sh down
+./network.sh up createChannel -ca
+./network.sh deployCC -ccn ehrChainCode -ccp ../ayurveda-chaincode/ -ccl javascript
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Start Application Server
+```bash
+node app.js
+# Server should start on port 5000
+```
+
+## Identity Management Setup
+
+### Step 1: Enroll Org1 Admin (Regulator Admin)
+```bash
+node ayurveda_admin_reg.js
+```
+
+### Step 2: Enroll Org2 Admin (Lab Admin)
+```bash
+node ayurveda_admin_org2.js
+```
+
+### Step 3: Register Lab Overseer (Org2)
+```bash
+node ayurveda_onboard_lab_overseer.js
+```
+
+### Step 4: Register Regulator
+```bash
+node ayurveda_onboard_regulator.js
+```
+
+### Step 5: Register Farmer
+```bash
+node ayurveda_onboard_farmer.js
+```
+
+### Step 6: Register Manufacturer
+```bash
+node ayurveda_onboard_manufacturer.js
+```
+
+### Step 7: Register Laboratory
+```bash
+node ayurveda_onboard_laboratory.js
+```
+
+## API Testing Commands (using curl)
+
+### 1. User Registration via API
+
+#### Register Farmer via API
+```bash
+curl -X POST http://localhost:5000/registerFarmer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adminId": "regulatorAdmin",
+    "userId": "Farmer02",
+    "name": "Raj Kumar",
+    "farmLocation": "Mysuru, Karnataka"
+  }'
+```
+
+#### Register Manufacturer via API
+```bash
+curl -X POST http://localhost:5000/registerManufacturer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adminId": "regulatorAdmin",
+    "userId": "Manufacturer02",
+    "companyName": "Himalaya Herbal Healthcare",
+    "name": "Dr. Meera Sharma",
+    "location": "Bengaluru, Karnataka"
+  }'
+```
+
+#### Register Laboratory via API
+```bash
+curl -X POST http://localhost:5000/registerLaboratory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adminId": "labAdmin",
+    "userId": "Laboratory02",
+    "labName": "NABL Certified Testing Lab",
+    "location": "Hyderabad, Telangana",
+    "accreditation": "NABL-17025",
+    "certifications": ["ISO-17025", "AYUSH-Certified"]
+  }'
+```
+
+### 2. Onboarding Operations
+
+#### Onboard Farmer (by Regulator)
+```bash
+curl -X POST http://localhost:5000/onboardFarmer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01",
+    "farmerId": "Farmer01",
+    "name": "Ramesh Patel",
+    "farmLocation": "Wayanad, Kerala"
+  }'
+```
+
+#### Onboard Manufacturer (by Regulator)
+```bash
+curl -X POST http://localhost:5000/onboardManufacturer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01",
+    "manufacturerId": "Manufacturer01",
+    "companyName": "Patanjali Ayurved",
+    "name": "Dr. Acharya Balkrishna",
+    "location": "Haridwar, Uttarakhand"
+  }'
+```
+
+#### Onboard Laboratory (by Lab Overseer)
+```bash
+curl -X POST http://localhost:5000/onboardLaboratory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "LabOverseer01",
+    "laboratoryId": "Laboratory01",
+    "labName": "Ayurveda Quality Testing Lab",
+    "location": "Mumbai, Maharashtra",
+    "accreditation": "NABL-17025-2023",
+    "certifications": ["ISO-17025", "AYUSH-QA", "FSSAI-Lab"]
+  }'
+```
+
+### 3. Supply Chain Operations
+
+#### Create Herb Batch (by Farmer)
+```bash
+curl -X POST http://localhost:5000/createHerbBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-ASH-001",
+    "herbName": "Ashwagandha",
+    "harvestDate": "2024-11-15",
+    "farmLocation": "Wayanad, Kerala",
+    "quantity": "250kg",
+    "gpsCoordinates": {
+      "latitude": 11.6854,
+      "longitude": 76.1320
+    },
+    "collectorId": "Farmer01",
+    "environmentalData": {
+      "temperature": "28°C",
+      "humidity": "75%",
+      "soilType": "Red laterite soil"
+    }
+  }'
+```
+
+#### Add Quality Test (by Laboratory)
+```bash
+curl -X POST http://localhost:5000/addQualityTest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Laboratory01",
+    "batchId": "BATCH-ASH-001",
+    "labId": "Laboratory01",
+    "testType": "moisture",
+    "testResults": {
+      "moisture": 10.5,
+      "pesticide": 0.2,
+      "purity": 96.5,
+      "heavyMetals": 0.1
+    },
+    "testDate": "2024-11-18",
+    "certification": "NABL-QC-12345",
+    "labLocation": "Mumbai, Maharashtra"
+  }'
+```
+
+#### Add Processing Step (by Manufacturer)
+```bash
+curl -X POST http://localhost:5000/addProcessingStep \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Manufacturer01",
+    "batchId": "BATCH-ASH-001",
+    "processingType": "drying",
+    "processingDate": "2024-11-20",
+    "processingLocation": "Haridwar Processing Unit",
+    "processingConditions": {
+      "temperature": 45,
+      "duration": 72,
+      "method": "solar_drying"
+    },
+    "outputMetrics": {
+      "yield": "200kg",
+      "moisture_after": 8.5,
+      "quality_grade": "Premium"
+    },
+    "equipmentUsed": "Solar Dryer Model SD-500",
+    "operatorId": "OP-001"
+  }'
+```
+
+#### Transfer Batch
+```bash
+curl -X POST http://localhost:5000/transferBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-ASH-001",
+    "toEntityId": "Manufacturer01",
+    "transferReason": "Sale to manufacturer for processing"
+  }'
+```
+
+#### Create Medicine (by Manufacturer)
+```bash
+curl -X POST http://localhost:5000/createMedicine \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Manufacturer01",
+    "medicineId": "MED-ASHWA-001",
+    "medicineName": "Ashwagandha Capsules",
+    "batchIds": ["BATCH-ASH-001"],
+    "manufacturingDate": "2024-11-25",
+    "expiryDate": "2026-11-25"
+  }'
+```
+
+### 4. Query Operations
+
+#### Get Consumer Info (Complete Supply Chain)
+```bash
+curl -X POST http://localhost:5000/getConsumerInfo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01",
+    "medicineId": "MED-ASHWA-001"
+  }'
+```
+
+#### Get Batch Details
+```bash
+curl -X POST http://localhost:5000/getBatchDetails \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-ASH-001"
+  }'
+```
+
+#### Get Medicine Details
+```bash
+curl -X POST http://localhost:5000/getMedicineDetails \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Manufacturer01",
+    "medicineId": "MED-ASHWA-001"
+  }'
+```
+
+#### Get Batches by Farmer
+```bash
+curl -X POST http://localhost:5000/getBatchesByFarmer \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01",
+    "farmerId": "Farmer01"
+  }'
+```
+
+#### Track Supply Chain
+```bash
+curl -X POST http://localhost:5000/trackSupplyChain \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01",
+    "itemId": "MED-ASHWA-001"
+  }'
+```
+
+#### Query Asset History
+```bash
+curl -X POST http://localhost:5000/queryHistoryOfAsset \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01",
+    "assetId": "BATCH-ASH-001"
+  }'
+```
+
+#### Fetch Complete Ledger (Regulator Only)
+```bash
+curl -X POST http://localhost:5000/fetchLedger \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Regulator01"
+  }'
+```
+
+## Advanced Testing Scenarios
+
+### Test Multiple Herb Types with Seasonal Restrictions
+
+#### Create Turmeric Batch (Valid Season: Aug-Nov)
+```bash
+curl -X POST http://localhost:5000/createHerbBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-TUR-001",
+    "herbName": "Turmeric",
+    "harvestDate": "2024-10-15",
+    "farmLocation": "Mysuru, Karnataka",
+    "quantity": "500kg",
+    "gpsCoordinates": {
+      "latitude": 12.2958,
+      "longitude": 76.6394
+    },
+    "environmentalData": {
+      "temperature": "26°C",
+      "humidity": "68%",
+      "soilType": "Black cotton soil"
+    }
+  }'
+```
+
+#### Create Brahmi Batch (Invalid Season Test)
+```bash
+curl -X POST http://localhost:5000/createHerbBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-BRA-001",
+    "herbName": "Brahmi",
+    "harvestDate": "2024-11-15",
+    "farmLocation": "Wayanad, Kerala",
+    "quantity": "150kg",
+    "gpsCoordinates": {
+      "latitude": 11.6854,
+      "longitude": 76.1320
+    },
+    "environmentalData": {
+      "temperature": "29°C",
+      "humidity": "80%",
+      "soilType": "Red laterite soil"
+    }
+  }'
+```
+
+### Test Quality Validation Failures
+
+#### Add Quality Test with High Pesticide (Should Fail)
+```bash
+curl -X POST http://localhost:5000/addQualityTest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Laboratory01",
+    "batchId": "BATCH-TUR-001",
+    "labId": "Laboratory01",
+    "testType": "pesticide",
+    "testResults": {
+      "moisture": 8.5,
+      "pesticide": 0.8,
+      "purity": 98.0,
+      "heavyMetals": 0.05
+    },
+    "testDate": "2024-11-18",
+    "certification": "NABL-QC-12346",
+    "labLocation": "Mumbai, Maharashtra"
+  }'
+```
+
+### Test Multi-Batch Medicine
+
+#### Create Complex Medicine from Multiple Batches
+```bash
+# First create second batch
+curl -X POST http://localhost:5000/createHerbBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-NEEM-001",
+    "herbName": "Neem",
+    "harvestDate": "2024-11-10",
+    "farmLocation": "Tamil Nadu Herbal Zone",
+    "quantity": "300kg",
+    "gpsCoordinates": {
+      "latitude": 11.1271,
+      "longitude": 78.6569
+    },
+    "environmentalData": {
+      "temperature": "32°C",
+      "humidity": "65%",
+      "soilType": "Red soil"
+    }
+  }'
+
+# Create medicine with multiple batches
+curl -X POST http://localhost:5000/createMedicine \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Manufacturer01",
+    "medicineId": "MED-COMPLEX-001",
+    "medicineName": "Ayurvedic Immunity Booster",
+    "batchIds": ["BATCH-ASH-001", "BATCH-TUR-001", "BATCH-NEEM-001"],
+    "manufacturingDate": "2024-12-01",
+    "expiryDate": "2026-12-01"
+  }'
+```
+
+## User Login Tests
+
+### Test All User Types Login
+```bash
+# Regulator Login
+curl -X POST http://localhost:5000/login \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "Regulator01"}'
+
+# Farmer Login
+curl -X POST http://localhost:5000/login \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "Farmer01"}'
+
+# Manufacturer Login
+curl -X POST http://localhost:5000/login \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "Manufacturer01"}'
+
+# Laboratory Login
+curl -X POST http://localhost:5000/login \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "Laboratory01"}'
+
+# Lab Overseer Login
+curl -X POST http://localhost:5000/login \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "LabOverseer01"}'
+```
+
+## Error Testing Scenarios
+
+### Test Invalid GPS Coordinates
+```bash
+curl -X POST http://localhost:5000/createHerbBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Farmer01",
+    "batchId": "BATCH-INVALID-GPS",
+    "herbName": "Ashwagandha",
+    "harvestDate": "2024-11-15",
+    "farmLocation": "Invalid Location",
+    "quantity": "100kg",
+    "gpsCoordinates": {
+      "latitude": 25.0000,
+      "longitude": 80.0000
+    },
+    "environmentalData": {
+      "temperature": "28°C",
+      "humidity": "75%",
+      "soilType": "Unknown"
+    }
+  }'
+```
+
+### Test Unauthorized Access
+```bash
+# Try to create batch as manufacturer (should fail)
+curl -X POST http://localhost:5000/createHerbBatch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "Manufacturer01",
+    "batchId": "BATCH-UNAUTHORIZED",
+    "herbName": "Ashwagandha",
+    "harvestDate": "2024-11-15",
+    "farmLocation": "Some Location",
+    "quantity": "100kg",
+    "gpsCoordinates": {
+      "latitude": 11.6854,
+      "longitude": 76.1320
+    }
+  }'
+```
+
+## Performance Testing
+
+### Bulk Operations Test
+```bash
+# Create multiple batches for performance testing
+for i in {1..5}; do
+  curl -X POST http://localhost:5000/createHerbBatch \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"userId\": \"Farmer01\",
+      \"batchId\": \"BATCH-BULK-$i\",
+      \"herbName\": \"Tulsi\",
+      \"harvestDate\": \"2024-11-$((10+i))\",
+      \"farmLocation\": \"Kerala Traditional Zone\",
+      \"quantity\": \"$((100+i*50))kg\",
+      \"gpsCoordinates\": {
+        \"latitude\": 11.6854,
+        \"longitude\": 76.1320
+      },
+      \"environmentalData\": {
+        \"temperature\": \"28°C\",
+        \"humidity\": \"75%\",
+        \"soilType\": \"Red laterite soil\"
+      }
+    }"
+done
+```
+
+## Monitoring and Validation
+
+### Check Server Status
+```bash
+curl http://localhost:5000/status
+```
+
+### Validate Complete Supply Chain Flow
+After running all the above commands, verify the complete flow by getting consumer information which should show the full traceability from farm to medicine.
+
+## Notes
+
+1. **Prerequisites**: Ensure Hyperledger Fabric network is running and chaincode is deployed
+2. **Order of Operations**: Follow the sequence - Setup identities → Onboard entities → Create batches → Add tests → Process → Create medicines
+3. **Error Handling**: The system includes comprehensive validation for geo-location, seasonal restrictions, quality standards, and sustainability
+4. **Multi-Org Support**: Commands demonstrate interaction between Org1 (Regulators/Farmers/Manufacturers) and Org2 (Laboratories)
+5. **FHIR Compliance**: The system follows FHIR standards for healthcare data interoperability
+6. **Sustainability**: Built-in conservation limits and vulnerability assessments for medicinal plants
+
+## Expected Results
+
+- Valid operations should return success responses with transaction IDs
+- Invalid operations (wrong seasons, unauthorized access, etc.) should return appropriate error messages
+- Consumer info should provide complete traceability from farm to final product
+- Quality test failures should be properly recorded and flagged
+- All blockchain transactions should be immutably recorded and queryable

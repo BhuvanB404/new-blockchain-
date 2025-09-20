@@ -5,14 +5,9 @@ const path = require('path');
 const FabricCAServices = require('fabric-ca-client');
 const { Wallets, Gateway } = require('fabric-network');
 
-const channelName = 'mychannel';
-const chaincodeName = 'ehrChainCode';
-
-
-const registerUser = async (userID, userRole) => {
-    const adminID = 'admin';
+const registerUser = async (adminID, delegateId, userID, userRole, args) => {
     const orgID = 'Org1';
-    
+
     const ccpPath = path.resolve(__dirname, '..', 'fabric-samples','test-network', 'organizations', 'peerOrganizations', `${orgID}.example.com`.toLowerCase(), `connection-${orgID}.json`.toLowerCase());
     const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
     const orgMSP = ccp.organizations[orgID].mspid;
@@ -50,29 +45,30 @@ const registerUser = async (userID, userRole) => {
         };
     }
 
-    // build a user object for authenticating with the CA //Verify
+    // build a user object for authenticating with the CA
     const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
     const adminUser = await provider.getUserContext(adminIdentity, adminID);
 
     // Register the user, enroll the user, and import the new identity into the wallet.
-    // if affiliation is specified by client, the affiliation value must be configured in CA
     const secret = await ca.register({
-        affiliation: `${orgID}.department1`.toLowerCase(), //TODO: as per affiliation in config .${userRole}
+        affiliation: `${orgID}.department1`.toLowerCase(),
         enrollmentID: userID,
         role: 'client',
         attrs: [
-            {name: 'role', value: userRole, ecert: true},           
-            {name: 'userId', value: userID, ecert: true},           
+            {name: 'role', value: userRole, ecert: true},
+            {name: 'uuid', value: userID, ecert: true},
         ]
     }, adminUser);
+
     const enrollment = await ca.enroll({
         enrollmentID: userID,
         enrollmentSecret: secret,
         attr_reqs: [
-            {name: 'role', optional: false},          
-            {name: 'userId', optional: false},          
+            {name: 'role', optional: false},
+            {name: 'uuid', optional: false},
         ]
     });
+
     const x509Identity = {
         credentials: {
             certificate: enrollment.certificate,
@@ -83,37 +79,77 @@ const registerUser = async (userID, userRole) => {
     };
     await wallet.put(userID, x509Identity);
     console.log(`Successfully registered and enrolled user ${userID} and imported it into the wallet`);
-     // -----------------------Create Wallet with default balance on ledger------------------ 
-    // Create a new gateway for connecting to our peer node.
-    // const gateway = new Gateway();
-    // await gateway.connect(ccp, { wallet, identity: userID, discovery: { enabled: true, asLocalhost: true } });
 
-    // // Get the network (channel) our contract is deployed to.
-    // const network = await gateway.getNetwork(channelName);
+    // For farmers/manufacturers, create onboard record
+    if (userRole === 'farmer') {
+        const gateway = new Gateway();
+        await gateway.connect(ccp, { wallet, identity: delegateId, discovery: { enabled: true, asLocalhost: true } });
+        const network = await gateway.getNetwork('mychannel');
+        const contract = network.getContract('ehrChainCode');
 
-    // // Get the contract from the network.
-    // const contract = network.getContract(chaincodeName);
+        const onboardArgs = {
+            farmerId: userID,
+            name: args.name,
+            farmLocation: args.farmLocation
+        };
 
-    // //async createWallet(ctx, userId, timeStamp, amount)
-    // const timeStamp = new Date().getTime();
-    // const userBalance = 0;
-    // const res = await contract.submitTransaction('createWallet', timeStamp, userBalance);
-    // const result = JSON.parse(res);
-    // console.log("Wallet status ::", res.toString(),result);
-   
-    // // Disconnect from the gateway.
-    // await gateway.disconnect();
-    
+        try {
+            const buffer = await contract.submitTransaction('onboardFarmer', JSON.stringify(onboardArgs));
+            gateway.disconnect();
+
+            return {
+                statusCode: 200,
+                userID: userID,
+                role: userRole,
+                message: `${userID} registered and enrolled successfully.`,
+                chaincodeRes: buffer.toString()
+            };
+        } catch (error) {
+            gateway.disconnect();
+            console.log('Onboard farmer failed:', error.message);
+        }
+    }
+
+    if (userRole === 'manufacturer') {
+        const gateway = new Gateway();
+        await gateway.connect(ccp, { wallet, identity: delegateId, discovery: { enabled: true, asLocalhost: true } });
+        const network = await gateway.getNetwork('mychannel');
+        const contract = network.getContract('ehrChainCode');
+
+        const onboardArgs = {
+            manufacturerId: userID,
+            companyName: args.companyName,
+            name: args.name,
+            location: args.location
+        };
+
+        try {
+            const buffer = await contract.submitTransaction('onboardManufacturer', JSON.stringify(onboardArgs));
+            gateway.disconnect();
+
+            return {
+                statusCode: 200,
+                userID: userID,
+                role: userRole,
+                message: `${userID} registered and enrolled successfully.`,
+                chaincodeRes: buffer.toString()
+            };
+        } catch (error) {
+            gateway.disconnect();
+            console.log('Onboard manufacturer failed:', error.message);
+        }
+    }
+
     return {
         statusCode: 200,
         userID: userID,
         role: userRole,
-        message: `${userID} registered and enrolled successfully.`,
-        
+        message: `${userID} registered and enrolled successfully.`
     };
 }
 
-const login = async (userID, orgID) => {
+const login = async (userID) => {
+    const orgID = 'Org1';
 
     const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', `${orgID}.example.com`.toLowerCase(), `connection-${orgID}.json`.toLowerCase());
     const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
@@ -135,7 +171,7 @@ const login = async (userID, orgID) => {
     } else {
         return {
             statusCode: 200,
-            userID: userID,           
+            userID: userID,
             message: `User login successful:: ${userID} .`
         };
     }

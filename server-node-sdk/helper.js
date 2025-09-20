@@ -5,11 +5,8 @@ const path = require('path');
 const FabricCAServices = require('fabric-ca-client');
 const { Wallets, Gateway } = require('fabric-network');
 
+const registerUser = async (adminID, delegateId, userID, userRole, args, orgID = 'Org1') => {
 
-const registerUser = async (adminID, doctorId, userID, userRole, args) => {
-    // const adminID = 'admin';
-    const orgID = 'Org1';
-    
     const ccpPath = path.resolve(__dirname, '..', 'fabric-samples','test-network', 'organizations', 'peerOrganizations', `${orgID}.example.com`.toLowerCase(), `connection-${orgID}.json`.toLowerCase());
     const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
     const orgMSP = ccp.organizations[orgID].mspid;
@@ -47,29 +44,30 @@ const registerUser = async (adminID, doctorId, userID, userRole, args) => {
         };
     }
 
-    // build a user object for authenticating with the CA //Verify
+    // build a user object for authenticating with the CA
     const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
     const adminUser = await provider.getUserContext(adminIdentity, adminID);
 
     // Register the user, enroll the user, and import the new identity into the wallet.
-    // if affiliation is specified by client, the affiliation value must be configured in CA
     const secret = await ca.register({
-        affiliation: `${orgID}.department1`.toLowerCase(), //TODO: as per affiliation in config .${userRole}
+        affiliation: `${orgID}.department1`.toLowerCase(),
         enrollmentID: userID,
         role: 'client',
         attrs: [
-            {name: 'role', value: userRole, ecert: true},           
-            {name: 'uuid', value: userID, ecert: true},           
+            {name: 'role', value: userRole, ecert: true},
+            {name: 'uuid', value: userID, ecert: true},
         ]
     }, adminUser);
+
     const enrollment = await ca.enroll({
         enrollmentID: userID,
         enrollmentSecret: secret,
         attr_reqs: [
-            {name: 'role', optional: false},          
-            {name: 'uuid', optional: false},          
+            {name: 'role', optional: false},
+            {name: 'uuid', optional: false},
         ]
     });
+
     const x509Identity = {
         credentials: {
             certificate: enrollment.certificate,
@@ -80,44 +78,111 @@ const registerUser = async (adminID, doctorId, userID, userRole, args) => {
     };
     await wallet.put(userID, x509Identity);
     console.log(`Successfully registered and enrolled user ${userID} and imported it into the wallet`);
-    
-     // Create a new gateway for connecting to our peer node.
+
+    // For farmers/manufacturers, create onboard record
+    if (userRole === 'farmer') {
         const gateway = new Gateway();
-        await gateway.connect(ccp, { wallet, identity: doctorId, discovery: { enabled: true, asLocalhost: true } });
-
-        // Get the network (channel) our contract is deployed to.
+        await gateway.connect(ccp, { wallet, identity: delegateId, discovery: { enabled: true, asLocalhost: true } });
         const network = await gateway.getNetwork('mychannel');
-
-        // Get the contract from the network.
         const contract = network.getContract('ehrChainCode');
 
-        const args01 = {
-            patientId:userID,
-            hospitalName: args.hospitalName,
-            name:args.name,
-            city:args.city
-        }
+        const onboardArgs = {
+            farmerId: userID,
+            name: args.name,
+            farmLocation: args.farmLocation
+        };
 
-        const buffer = await contract.submitTransaction('onboardPatient', JSON.stringify(args01));
-        // Disconnect from the gateway.
-        gateway.disconnect();
+        try {
+            const buffer = await contract.submitTransaction('onboardFarmer', JSON.stringify(onboardArgs));
+            gateway.disconnect();
+
+            return {
+                statusCode: 200,
+                userID: userID,
+                role: userRole,
+                message: `${userID} registered and enrolled successfully.`,
+                chaincodeRes: buffer.toString()
+            };
+        } catch (error) {
+            gateway.disconnect();
+            console.log('Onboard farmer failed:', error.message);
+        }
+    }
+
+    if (userRole === 'manufacturer') {
+        const gateway = new Gateway();
+        await gateway.connect(ccp, { wallet, identity: delegateId, discovery: { enabled: true, asLocalhost: true } });
+        const network = await gateway.getNetwork('mychannel');
+        const contract = network.getContract('ehrChainCode');
+
+        const onboardArgs = {
+            manufacturerId: userID,
+            companyName: args.companyName,
+            name: args.name,
+            location: args.location
+        };
+
+        try {
+            const buffer = await contract.submitTransaction('onboardManufacturer', JSON.stringify(onboardArgs));
+            gateway.disconnect();
+
+            return {
+                statusCode: 200,
+                userID: userID,
+                role: userRole,
+                message: `${userID} registered and enrolled successfully.`,
+                chaincodeRes: buffer.toString()
+            };
+        } catch (error) {
+            gateway.disconnect();
+            console.log('Onboard manufacturer failed:', error.message);
+        }
+    }
+
+    // For laboratory, create onboard record using Org2 connection
+    if (userRole === 'laboratory') {
+        const org2CcpPath = path.resolve(__dirname, '..', 'fabric-samples','test-network', 'organizations', 'peerOrganizations', 'org2.example.com', 'connection-org2.json');
+        const org2Ccp = JSON.parse(fs.readFileSync(org2CcpPath, 'utf8'));
+        
+        const gateway = new Gateway();
+        await gateway.connect(org2Ccp, { wallet, identity: delegateId, discovery: { enabled: true, asLocalhost: true } });
+        const network = await gateway.getNetwork('mychannel');
+        const contract = network.getContract('ehrChainCode');
+
+        const onboardArgs = {
+            laboratoryId: userID,
+            labName: args.labName,
+            location: args.location,
+            accreditation: args.accreditation,
+            certifications: args.certifications
+        };
+
+        try {
+            const buffer = await contract.submitTransaction('onboardLaboratory', JSON.stringify(onboardArgs));
+            gateway.disconnect();
+
+            return {
+                statusCode: 200,
+                userID: userID,
+                role: userRole,
+                message: `${userID} registered and enrolled successfully.`,
+                chaincodeRes: buffer.toString()
+            };
+        } catch (error) {
+            gateway.disconnect();
+            console.log('Onboard laboratory failed:', error.message);
+        }
+    }
 
     return {
         statusCode: 200,
         userID: userID,
         role: userRole,
-        message: `${userID} registered and enrolled successfully.`,
-        chaincodeRes: buffer.toString()
+        message: `${userID} registered and enrolled successfully.`
     };
 }
 
 const login = async (userID) => {
-
-    const orgID = 'Org1';
-
-    const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', `${orgID}.example.com`.toLowerCase(), `connection-${orgID}.json`.toLowerCase());
-    const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
-
     // Create a new file system based wallet for managing identities.
     const walletPath = path.join(process.cwd(), 'wallet');
     const wallet = await Wallets.newFileSystemWallet(walletPath);
@@ -135,7 +200,7 @@ const login = async (userID) => {
     } else {
         return {
             statusCode: 200,
-            userID: userID,           
+            userID: userID,
             message: `User login successful:: ${userID} .`
         };
     }

@@ -1,3 +1,7 @@
+
+
+
+
 'use strict';
 
 const express = require('express');
@@ -54,24 +58,6 @@ app.post('/registerManufacturer', async function (req, res, next) {
     }
 });
 
-// Register laboratory (Org2)
-app.post('/registerLaboratory', async function (req, res, next) {
-    try {
-        let { adminId, userId, labName, location, accreditation, certifications } = req.body;
-
-        if (!req.body.userId || !req.body.adminId) {
-            throw new Error("Missing input data. Please enter all the laboratory details.");
-        }
-
-        const role = 'laboratory';
-        const result = await helper.registerUser(adminId, adminId, userId, role, { labName, location, accreditation, certifications }, 'Org2');
-        res.status(200).send(result);
-    } catch (error) {
-        console.log("Error registering laboratory: ", error);
-        next(error);
-    }
-});
-
 // Login user
 app.post('/login', async function (req, res, next){
     try {
@@ -113,102 +99,11 @@ app.post('/onboardFarmer', async function (req, res, next){
     }
 });
 
-// Onboard laboratory (by lab overseer from Org2)
-app.post('/onboardLaboratory', async function (req, res, next){
-    try {
-        const { userId, laboratoryId, labName, location, accreditation, certifications } = req.body;
-        const result = await invoke.invokeTransaction('onboardLaboratory', { laboratoryId, labName, location, accreditation, certifications }, userId);
-        res.send({ success: true, data: result });
-    } catch (error) {
-        next(error);
-    }
-});
-
 // Create herb batch (by farmer)
 app.post('/createHerbBatch', async function (req, res, next){
     try {
-        const { 
-            userId, 
-            batchId, 
-            herbName, 
-            harvestDate, 
-            farmLocation, 
-            quantity,
-            gpsCoordinates,
-            collectorId,
-            environmentalData
-        } = req.body;
-        
-        const result = await invoke.invokeTransaction('createHerbBatch', { 
-            batchId, 
-            herbName, 
-            harvestDate, 
-            farmLocation, 
-            quantity,
-            gpsCoordinates,
-            collectorId,
-            environmentalData
-        }, userId);
-        res.send({ success: true, data: result });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Add quality test (by laboratory from Org2)
-app.post('/addQualityTest', async function (req, res, next){
-    try {
-        const {
-            userId,
-            batchId,
-            labId,
-            testType,
-            testResults,
-            testDate,
-            certification,
-            labLocation
-        } = req.body;
-        
-        const result = await invoke.invokeTransaction('addQualityTest', { 
-            batchId,
-            labId,
-            testType,
-            testResults,
-            testDate,
-            certification,
-            labLocation
-        }, userId);
-        res.send({ success: true, data: result });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Add processing step (by manufacturer/processor)
-app.post('/addProcessingStep', async function (req, res, next){
-    try {
-        const {
-            userId,
-            batchId,
-            processingType,
-            processingDate,
-            processingLocation,
-            processingConditions,
-            outputMetrics,
-            equipmentUsed,
-            operatorId
-        } = req.body;
-        
-        const result = await invoke.invokeTransaction('addProcessingStep', { 
-            batchId,
-            processingType,
-            processingDate,
-            processingLocation,
-            processingConditions,
-            outputMetrics,
-            equipmentUsed,
-            operatorId
-        }, userId);
+        const { userId, batchId, herbName, harvestDate, farmLocation, quantity } = req.body;
+        const result = await invoke.invokeTransaction('createHerbBatch', { batchId, herbName, harvestDate, farmLocation, quantity }, userId);
         res.send({ success: true, data: result });
     } catch (error) {
         next(error);
@@ -232,17 +127,6 @@ app.post('/createMedicine', async function (req, res, next){
         const { userId, medicineId, medicineName, batchIds, manufacturingDate, expiryDate } = req.body;
         const result = await invoke.invokeTransaction('createMedicine', { medicineId, medicineName, batchIds, manufacturingDate, expiryDate }, userId);
         res.send({ success: true, data: result });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Consumer verification - get complete supply chain info
-app.post('/getConsumerInfo', async function (req, res, next){
-    try {
-        const { userId, medicineId } = req.body;
-        const result = await query.getQuery('getConsumerInfo', { medicineId }, userId);
-        res.status(200).send({ success: true, data: result });
     } catch (error) {
         next(error);
     }
@@ -319,5 +203,3 @@ app.post('/fetchLedger', async function (req, res, next){
 app.use((err, req, res, next) => {
     res.status(400).send(err.message);
 })
-
-module.exports = app;

@@ -13,8 +13,8 @@ const path = require('path');
 
 async function main() {
     try {
-        // load the network configuration
-        const ccpPath = path.resolve(__dirname, '../..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', 'org2.example.com', 'connection-org2.json');
+        // load the network configuration for Org2
+        const ccpPath = path.resolve(__dirname, '..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', 'org2.example.com', 'connection-org2.json');
         const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
         // Create a new CA client for interacting with the CA.
@@ -30,7 +30,7 @@ async function main() {
         // Check to see if we've already enrolled the admin user.
         const identity = await wallet.get('labAdmin');
         if (identity) {
-            console.log('An identity for the admin user "labAdmin" already exists in the wallet');
+            console.log('An identity for the lab admin "labAdmin" already exists in the wallet');
             return;
         }
 
@@ -45,10 +45,10 @@ async function main() {
             type: 'X.509',
         };
         await wallet.put('labAdmin', x509Identity);
-        console.log('Successfully enrolled admin user "labAdmin" and imported it into the wallet');
+        console.log('Successfully enrolled lab admin user "labAdmin" and imported it into the wallet');
 
     } catch (error) {
-        console.error(`Failed to enroll admin user "labAdmin": ${error}`);
+        console.error(`Failed to enroll lab admin user "labAdmin": ${error}`);
         process.exit(1);
     }
 }
