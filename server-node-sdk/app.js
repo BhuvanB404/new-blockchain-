@@ -1,3 +1,6 @@
+
+
+
 'use strict';
 
 const express = require('express');
@@ -18,7 +21,7 @@ app.get('/status', async function (req, res, next) {
     res.send("Ayurveda Supply Chain server is up.");
 })
 
-// Register farmer
+// Register and onboard farmer in one step
 app.post('/registerFarmer', async function (req, res, next) {
     try {
         let { adminId, userId, name, farmLocation } = req.body;
@@ -28,7 +31,8 @@ app.post('/registerFarmer', async function (req, res, next) {
         }
 
         const role = 'farmer';
-        const result = await helper.registerUser(adminId, adminId, userId, role, { name, farmLocation });
+        // This will both register the user in CA and onboard them in chaincode
+        const result = await helper.registerAndOnboardUser(adminId, userId, role, { name, farmLocation }, 'Org1');
         res.status(200).send(result);
     } catch (error) {
         console.log("Error registering farmer: ", error);
@@ -36,7 +40,7 @@ app.post('/registerFarmer', async function (req, res, next) {
     }
 });
 
-// Register manufacturer
+// Register and onboard manufacturer in one step
 app.post('/registerManufacturer', async function (req, res, next) {
     try {
         let { adminId, userId, companyName, name, location } = req.body;
@@ -46,7 +50,8 @@ app.post('/registerManufacturer', async function (req, res, next) {
         }
 
         const role = 'manufacturer';
-        const result = await helper.registerUser(adminId, adminId, userId, role, { companyName, name, location });
+        // This will both register the user in CA and onboard them in chaincode
+        const result = await helper.registerAndOnboardUser(adminId, userId, role, { companyName, name, location }, 'Org1');
         res.status(200).send(result);
     } catch (error) {
         console.log("Error registering manufacturer: ", error);
@@ -54,7 +59,7 @@ app.post('/registerManufacturer', async function (req, res, next) {
     }
 });
 
-// Register laboratory (Org2)
+// Register and onboard laboratory in one step (Org2)
 app.post('/registerLaboratory', async function (req, res, next) {
     try {
         let { adminId, userId, labName, location, accreditation, certifications } = req.body;
@@ -64,7 +69,8 @@ app.post('/registerLaboratory', async function (req, res, next) {
         }
 
         const role = 'laboratory';
-        const result = await helper.registerUser(adminId, adminId, userId, role, { labName, location, accreditation, certifications }, 'Org2');
+        // This will both register the user in CA and onboard them in chaincode
+        const result = await helper.registerAndOnboardUser(adminId, userId, role, { labName, location, accreditation, certifications }, 'Org2');
         res.status(200).send(result);
     } catch (error) {
         console.log("Error registering laboratory: ", error);
@@ -91,7 +97,8 @@ app.post('/login', async function (req, res, next){
     }
 });
 
-// Onboard manufacturer (by regulator)
+// These endpoints are for cases where you want to onboard existing registered users
+// Onboard manufacturer (by regulator) - for already registered users
 app.post('/onboardManufacturer', async function (req, res, next){
     try {
         const { userId, manufacturerId, companyName, name, location } = req.body;
@@ -102,7 +109,7 @@ app.post('/onboardManufacturer', async function (req, res, next){
     }
 });
 
-// Onboard farmer (by regulator)
+// Onboard farmer (by regulator) - for already registered users
 app.post('/onboardFarmer', async function (req, res, next){
     try {
         const { userId, farmerId, name, farmLocation } = req.body;
@@ -113,7 +120,7 @@ app.post('/onboardFarmer', async function (req, res, next){
     }
 });
 
-// Onboard laboratory (by lab overseer from Org2)
+// Onboard laboratory (by lab overseer from Org2) - for already registered users
 app.post('/onboardLaboratory', async function (req, res, next){
     try {
         const { userId, laboratoryId, labName, location, accreditation, certifications } = req.body;
@@ -127,23 +134,23 @@ app.post('/onboardLaboratory', async function (req, res, next){
 // Create herb batch (by farmer)
 app.post('/createHerbBatch', async function (req, res, next){
     try {
-        const { 
-            userId, 
-            batchId, 
-            herbName, 
-            harvestDate, 
-            farmLocation, 
+        const {
+            userId,
+            batchId,
+            herbName,
+            harvestDate,
+            farmLocation,
             quantity,
             gpsCoordinates,
             collectorId,
             environmentalData
         } = req.body;
-        
-        const result = await invoke.invokeTransaction('createHerbBatch', { 
-            batchId, 
-            herbName, 
-            harvestDate, 
-            farmLocation, 
+
+        const result = await invoke.invokeTransaction('createHerbBatch', {
+            batchId,
+            herbName,
+            harvestDate,
+            farmLocation,
             quantity,
             gpsCoordinates,
             collectorId,
@@ -168,8 +175,8 @@ app.post('/addQualityTest', async function (req, res, next){
             certification,
             labLocation
         } = req.body;
-        
-        const result = await invoke.invokeTransaction('addQualityTest', { 
+
+        const result = await invoke.invokeTransaction('addQualityTest', {
             batchId,
             labId,
             testType,
@@ -198,8 +205,8 @@ app.post('/addProcessingStep', async function (req, res, next){
             equipmentUsed,
             operatorId
         } = req.body;
-        
-        const result = await invoke.invokeTransaction('addProcessingStep', { 
+
+        const result = await invoke.invokeTransaction('addProcessingStep', {
             batchId,
             processingType,
             processingDate,
