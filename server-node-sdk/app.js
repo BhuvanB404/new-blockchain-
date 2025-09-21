@@ -1,3 +1,4 @@
+
 'use strict';
 
 const express = require('express');
@@ -11,6 +12,8 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
@@ -23,29 +26,41 @@ app.use(helmet({
     },
 }));
 
-// CORS configuration for app and website
+// CORS configuration for frontend integration - FIXED
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests from mobile apps (no origin) and specified domains
+        // Allow requests from development and production domains
         const allowedOrigins = [
-            'http://localhost:3000', // React development
-            'http://localhost:3001', // Alternative React port
-            'https://yourdomain.com', // Production website
-            'https://app.yourdomain.com', // Production app
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://localhost:5173',
+            'https://yourdomain.com',
+            'https://app.yourdomain.com'
         ];
-        
-        if (!origin || allowedOrigins.includes(origin)) {
+
+        // Allow requests with no origin (mobile apps, server-to-server, etc.)
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
+            console.log('CORS blocked origin:', origin);
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Device-Info'],
+    optionsSuccessStatus: 200 // For legacy browser support
 };
 
 app.use(cors(corsOptions));
+
+// Also add preflight handler for complex requests
+app.options('*', cors(corsOptions));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -59,8 +74,16 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-app.listen(5000, function () {
-    console.log('Ayurveda Supply Chain server is running on port 5000 with enhanced security :) ');
+// Environment configuration
+const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Add environment logging
+app.listen(PORT, function () {
+    console.log(`Ayurveda Supply Chain server is running on port ${PORT}`);
+    console.log(`Environment: ${NODE_ENV}`);
+    console.log('CORS enabled for specified origins.');
+    console.log('Available endpoints: /api/docs');
 });
 
 app.get('/status', async function (req, res, next) {
@@ -106,9 +129,9 @@ app.post('/auth/register/farmer', auth.authLimiter, async function (req, res, ne
 // Register manufacturer with authentication
 app.post('/auth/register/manufacturer', auth.authLimiter, async function (req, res, next) {
     try {
-        const { 
-            email, password, confirmPassword, companyName, name, location, 
-            licenses, contact, documentCids, deviceInfo 
+        const {
+            email, password, confirmPassword, companyName, name, location,
+            licenses, contact, documentCids, deviceInfo
         } = req.body;
 
         if (!companyName || !name || !location) {
@@ -144,9 +167,9 @@ app.post('/auth/register/manufacturer', auth.authLimiter, async function (req, r
 // Register laboratory with authentication
 app.post('/auth/register/laboratory', auth.authLimiter, async function (req, res, next) {
     try {
-        const { 
-            email, password, confirmPassword, labName, location, 
-            accreditation, certifications, contact, documentCids, deviceInfo 
+        const {
+            email, password, confirmPassword, labName, location,
+            accreditation, certifications, contact, documentCids, deviceInfo
         } = req.body;
 
         if (!labName || !location) {
@@ -191,7 +214,7 @@ app.post('/auth/login', auth.loginLimiter, async function (req, res, next) {
         };
 
         const result = await auth.loginUser(credentials);
-        
+
         if (result.success) {
             // Set secure HTTP-only cookie for refresh token (web only)
             res.cookie('refreshToken', result.data.refreshToken, {
@@ -216,9 +239,9 @@ app.post('/auth/refresh', async function (req, res, next) {
     try {
         // Try to get refresh token from body (mobile) or cookie (web)
         const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
-        
+
         const result = await auth.refreshToken(refreshToken);
-        
+
         if (result.success && req.cookies.refreshToken) {
             // Update refresh token cookie for web clients
             res.cookie('refreshToken', result.data.refreshToken, {
@@ -242,12 +265,12 @@ app.post('/auth/refresh', async function (req, res, next) {
 app.post('/auth/logout', async function (req, res, next) {
     try {
         const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
-        
+
         const result = await auth.logoutUser(refreshToken);
-        
+
         // Clear refresh token cookie
         res.clearCookie('refreshToken');
-        
+
         res.status(result.statusCode).json(result);
     } catch (error) {
         res.status(400).json({
@@ -315,7 +338,7 @@ app.post('/createHerbBatch', auth.verifyToken, auth.requireRole('farmer'), async
             environmentalData, cultivationMethod, harvestMethod,
             plantPart, images, documentCids
         }, userId);
-        
+
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);
@@ -347,7 +370,7 @@ app.post('/addQualityTest', auth.verifyToken, auth.requireRole('laboratory'), as
             labLocation, testStatus, testMethod, equipmentUsed,
             observations, images, documentCids
         }, userId);
-        
+
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);
@@ -376,7 +399,7 @@ app.post('/addProcessingStep', auth.verifyToken, auth.requireRole('manufacturer'
             operatorId, temperature, duration, additionalParameters,
             images, notes, documentCids
         }, userId);
-        
+
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);
@@ -388,15 +411,15 @@ app.post('/transferBatch', auth.verifyToken, async function (req, res, next) {
     try {
         const userId = req.user.userId;
         const { batchId, toEntityId, transferReason, transferLocation, documents, documentCids } = req.body;
-        
+
         if (!batchId || !toEntityId) {
             throw new Error("Missing required transfer fields: batchId, toEntityId");
         }
 
-        const result = await invoke.invokeTransaction('transferBatch', { 
+        const result = await invoke.invokeTransaction('transferBatch', {
             batchId, toEntityId, transferReason, transferLocation, documents, documentCids
         }, userId);
-        
+
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);
@@ -407,12 +430,12 @@ app.post('/transferBatch', auth.verifyToken, async function (req, res, next) {
 app.post('/createMedicine', auth.verifyToken, auth.requireRole('manufacturer'), async function (req, res, next) {
     try {
         const userId = req.user.userId;
-        const { 
+        const {
             medicineId, medicineName, batchIds, manufacturingDate, expiryDate,
             dosageForm, strength, packagingDetails, storageConditions,
             batchNumber, regulatoryApprovals, documentCids
         } = req.body;
-        
+
         // Validate required fields
         if (!medicineId || !medicineName || !batchIds || !manufacturingDate || !expiryDate) {
             throw new Error("Missing required medicine creation fields");
@@ -422,51 +445,75 @@ app.post('/createMedicine', auth.verifyToken, auth.requireRole('manufacturer'), 
             throw new Error("batchIds must be a non-empty array");
         }
 
-        const result = await invoke.invokeTransaction('createMedicine', { 
+        const result = await invoke.invokeTransaction('createMedicine', {
             medicineId, medicineName, batchIds, manufacturingDate, expiryDate,
             dosageForm, strength, packagingDetails, storageConditions,
             batchNumber, regulatoryApprovals, documentCids
         }, userId);
-        
+
         res.json({ success: true, data: result });
     } catch (error) {
         next(error);
     }
 });
 
-// ===== QUERY ENDPOINTS (PROTECTED) =====
+// ===== QUERY ENDPOINTS =====
 
-// Consumer verification - get complete supply chain info (public with optional auth)
+// Update the consumer info endpoint to be truly public
 app.post('/getConsumerInfo', async function (req, res, next) {
     try {
         const { medicineId } = req.body;
-        const userId = req.user ? req.user.userId : null; // Optional authentication
-        
+
         if (!medicineId) {
             throw new Error("Missing medicineId");
         }
-        
-        const result = await query.getQuery('getConsumerInfo', { medicineId }, userId);
-        res.status(200).json({ success: true, data: result });
+
+        // Use anonymous access for public queries
+        const result = await query.getQuery('getConsumerInfo', { medicineId }, null);
+
+        if (result.status) {
+            res.status(200).json({ success: true, data: result.data });
+        } else {
+            res.status(result.statusCode || 404).json({
+                success: false,
+                message: result.message || 'Consumer info not found'
+            });
+        }
     } catch (error) {
-        next(error);
+        console.error('Consumer info error:', error.message);
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 });
 
-// Get batch details (protected)
-app.post('/getBatchDetails', auth.verifyToken, async function (req, res, next) {
+// Update batch details to allow public access
+app.post('/getBatchDetails', async function (req, res, next) {
     try {
         const { batchId } = req.body;
-        const userId = req.user.userId;
-        
+        const userId = req.user ? req.user.userId : null; // Optional authentication
+
         if (!batchId) {
             throw new Error("Missing batchId");
         }
-        
+
         const result = await query.getQuery('getBatchDetails', { batchId }, userId);
-        res.status(200).json({ success: true, data: result });
+
+        if (result.status) {
+            res.status(200).json({ success: true, data: result.data });
+        } else {
+            res.status(result.statusCode || 404).json({
+                success: false,
+                message: result.message || 'Batch not found'
+            });
+        }
     } catch (error) {
-        next(error);
+        console.error('Batch details error:', error.message);
+        res.status(400).json({
+            success: false,
+            message: error.message
+        });
     }
 });
 
@@ -475,11 +522,11 @@ app.post('/getMedicineDetails', auth.verifyToken, async function (req, res, next
     try {
         const { medicineId } = req.body;
         const userId = req.user.userId;
-        
+
         if (!medicineId) {
             throw new Error("Missing medicineId");
         }
-        
+
         const result = await query.getQuery('getMedicineDetails', { medicineId }, userId);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
@@ -492,7 +539,7 @@ app.post('/getBatchesByFarmer', auth.verifyToken, async function (req, res, next
     try {
         const { farmerId } = req.body;
         const userId = req.user.userId;
-        
+
         // Allow farmers to query their own batches or authorized roles to query any
         const allowedRoles = ['regulator', 'labOverseer'];
         if (req.user.role === 'farmer' && farmerId !== userId) {
@@ -503,11 +550,11 @@ app.post('/getBatchesByFarmer', auth.verifyToken, async function (req, res, next
                 });
             }
         }
-        
+
         if (!farmerId) {
             throw new Error("Missing farmerId");
         }
-        
+
         const result = await query.getQuery('getBatchesByFarmer', { farmerId }, userId);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
@@ -520,11 +567,11 @@ app.post('/trackSupplyChain', async function (req, res, next) {
     try {
         const { itemId } = req.body;
         const userId = req.user ? req.user.userId : null;
-        
+
         if (!itemId) {
             throw new Error("Missing itemId");
         }
-        
+
         const result = await query.getQuery('trackSupplyChain', { itemId }, userId);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
@@ -537,13 +584,13 @@ app.post('/queryHistoryOfAsset', auth.verifyToken, async function (req, res, nex
     try {
         const { assetId } = req.body;
         const userId = req.user.userId;
-        
+
         if (!assetId) {
             throw new Error("Missing assetId");
         }
 
         const result = await query.getQuery('queryHistoryOfAsset', { assetId }, userId);
-        
+
         // Try to parse the result data if it's a string
         try {
             const parsedData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
@@ -560,7 +607,7 @@ app.post('/queryHistoryOfAsset', auth.verifyToken, async function (req, res, nex
 app.post('/fetchLedger', auth.verifyToken, auth.requireRole('regulator'), async function (req, res, next) {
     try {
         const userId = req.user.userId;
-        
+
         const result = await query.getQuery('fetchLedger', {}, userId);
         res.status(200).json({ success: true, data: result });
     } catch (error) {
@@ -569,7 +616,6 @@ app.post('/fetchLedger', auth.verifyToken, auth.requireRole('regulator'), async 
 });
 
 // ===== LEGACY ENDPOINTS (DEPRECATED) =====
-// Keep these for backward compatibility but add deprecation warnings
 
 app.post('/registerFarmer', async function (req, res, next) {
     console.warn('DEPRECATED: /registerFarmer endpoint is deprecated. Use /auth/register/farmer instead.');
@@ -581,10 +627,10 @@ app.post('/registerFarmer', async function (req, res, next) {
         }
 
         const role = 'farmer';
-        const result = await helper.registerAndOnboardUser(adminId, userId, role, { 
-            name, farmLocation, contact, certifications, documentCids 
+        const result = await helper.registerAndOnboardUser(adminId, userId, role, {
+            name, farmLocation, contact, certifications, documentCids
         }, 'Org1');
-        
+
         res.status(result.statusCode).send({
             ...result,
             warning: 'This endpoint is deprecated. Please use /auth/register/farmer for enhanced security.'
@@ -605,10 +651,10 @@ app.post('/registerManufacturer', async function (req, res, next) {
         }
 
         const role = 'manufacturer';
-        const result = await helper.registerAndOnboardUser(adminId, userId, role, { 
-            companyName, name, location, licenses, contact, documentCids 
+        const result = await helper.registerAndOnboardUser(adminId, userId, role, {
+            companyName, name, location, licenses, contact, documentCids
         }, 'Org1');
-        
+
         res.status(result.statusCode).send({
             ...result,
             warning: 'This endpoint is deprecated. Please use /auth/register/manufacturer for enhanced security.'
@@ -629,10 +675,10 @@ app.post('/registerLaboratory', async function (req, res, next) {
         }
 
         const role = 'laboratory';
-        const result = await helper.registerAndOnboardUser(adminId, userId, role, { 
-            labName, location, accreditation, certifications, contact, documentCids 
+        const result = await helper.registerAndOnboardUser(adminId, userId, role, {
+            labName, location, accreditation, certifications, contact, documentCids
         }, 'Org2');
-        
+
         res.status(result.statusCode).send({
             ...result,
             warning: 'This endpoint is deprecated. Please use /auth/register/laboratory for enhanced security.'
@@ -669,7 +715,7 @@ app.post('/login', async function (req, res, next) {
 function extractDeviceInfo(req) {
     const userAgent = req.headers['user-agent'] || '';
     const xDeviceInfo = req.headers['x-device-info'];
-    
+
     if (xDeviceInfo) {
         try {
             return JSON.parse(xDeviceInfo);
@@ -677,11 +723,11 @@ function extractDeviceInfo(req) {
             console.warn('Invalid X-Device-Info header:', e.message);
         }
     }
-    
+
     // Basic device info extraction from user agent
     const isWeb = !userAgent.includes('Mobile') || userAgent.includes('iPad');
     const isMobile = !isWeb;
-    
+
     return {
         type: isWeb ? 'web' : 'mobile',
         userAgent: userAgent,
@@ -690,14 +736,27 @@ function extractDeviceInfo(req) {
     };
 }
 
-// Health check for load balancers
-app.get('/health', async function (req, res) {
+// Add health check with CORS headers
+app.get('/health', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
     res.status(200).json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        version: process.env.APP_VERSION || '1.0.0'
+        version: process.env.APP_VERSION || '1.0.0',
+        environment: NODE_ENV
     });
 });
+
+// Add a development endpoint to test CORS
+if (NODE_ENV === 'development') {
+    app.get('/test-cors', (req, res) => {
+        res.json({
+            message: 'CORS is working!',
+            origin: req.headers.origin,
+            timestamp: new Date().toISOString()
+        });
+    });
+}
 
 // API documentation endpoint
 app.get('/api/docs', async function (req, res) {
@@ -722,7 +781,7 @@ app.get('/api/docs', async function (req, res) {
                 'POST /transferBatch': 'Transfer batch ownership',
                 'POST /createMedicine': 'Create medicine from batches (manufacturer only)',
                 'POST /getConsumerInfo': 'Get consumer information (public)',
-                'POST /getBatchDetails': 'Get batch details (authenticated)',
+                'POST /getBatchDetails': 'Get batch details (public/authenticated)',
                 'POST /getMedicineDetails': 'Get medicine details (authenticated)',
                 'POST /getBatchesByFarmer': 'Get batches by farmer (authenticated)',
                 'POST /trackSupplyChain': 'Track supply chain (public)',
@@ -741,11 +800,11 @@ app.get('/api/docs', async function (req, res) {
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err.message);
-    
+
     // Don't expose internal errors in production
     const isDevelopment = process.env.NODE_ENV !== 'production';
     const errorMessage = isDevelopment ? err.message : 'Internal server error';
-    
+
     res.status(err.statusCode || 500).json({
         success: false,
         message: errorMessage,

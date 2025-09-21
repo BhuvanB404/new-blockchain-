@@ -175,32 +175,32 @@ function isPublicQuery(fcn) {
     return publicQueries.includes(fcn);
 }
 
-// Helper function to get available identities from wallet
+
+
+// In query.js - fix this function
 async function getAvailableIdentities(wallet) {
     try {
-        // This is a simplified approach - in a real scenario you might want to
-        // have a dedicated public identity or use a more sophisticated approach
-        const commonIdentities = [
-            'regulatorAdmin',
-            'Regulator01',
-            'labAdmin',
-            'LabOverseer01'
-        ];
-        
-        const availableIdentities = [];
-        for (const id of commonIdentities) {
-            const identity = await wallet.get(id);
-            if (identity) {
-                availableIdentities.push(id);
+        const identities = ['regulatorAdmin', 'labAdmin', 'adminUser'];
+        const available = [];
+
+        for (const id of identities) {
+            try {
+                const identity = await wallet.get(id);
+                if (identity) {
+                    available.push(id);
+                }
+            } catch (e) {
+                continue;
             }
         }
-        
-        return availableIdentities;
+
+        return available;
     } catch (error) {
-        console.error('Error getting available identities:', error.message);
-        return [];
+        console.error('Error getting available identities:', error);
+        return ['regulatorAdmin']; // fallback
     }
 }
+
 
 // Enhanced query function with parameter validation
 const getQueryWithValidation = async (fcn, args, userID) => {
